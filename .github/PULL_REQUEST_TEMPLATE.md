@@ -1,10 +1,10 @@
-## Motivation
+# Solution to hands-on problem
+
+## Time spent
 
 <!-- REQUIRED
-  Why are you introducing this change? Why is this change necessary? What
-  are you trying to achieve with this change?
-  If you have a relevant issue, add a link directly to the issue URL here.
- -->
+  How long did it take you to solve the task?
+-->
 
 ## Approach
 
