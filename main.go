@@ -19,8 +19,18 @@ import (
 
 var rnd *renderer.Render
 var db *mgo.Database
+var sess *mgo.Session
+var host string = "localhost"
 
-const (
+
+// Need to correctly configure the host via configmap default localhost:27017
+func setHost() {
+	if os.Getenv("MONGO_HOST") != "" {
+		host = os.Getenv("MONGO_HOST")
+	}
+}
+
+var (
 	hostName       string = "localhost:27017"
 	dbName         string = "demo_todo"
 	collectionName string = "todo"
@@ -136,6 +146,18 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func healthCheck(w http.ResponseWriter,  r *http.Request ) {
+	// reviewing documentation do a ping against the session for health check
+	// Need to spend some more time here to make correct to implement lifecyle hooks / ready and live probes.
+	var err = sess.Ping();
+	if err != nil {
+	 	rnd.JSON(w, http.StatusBadRequest, false)	
+	} else{
+		rnd.JSON(w, http.StatusOK, true)
+	}
+
+}
+
 func fetchTodos(w http.ResponseWriter, r *http.Request) {
 	todos := []todoModel{}
 
@@ -224,6 +246,7 @@ func todoHandlers() http.Handler {
 	rg := chi.NewRouter()
 	rg.Group(func(r chi.Router) {
 		r.Get("/", fetchTodos)
+		r.Get("/status/health", healthCheck)
 		r.Post("/", createTodo)
 		r.Put("/{id}", updateTodo)
 		r.Delete("/{id}", deleteTodo)

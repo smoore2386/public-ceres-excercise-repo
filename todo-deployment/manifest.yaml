@@ -1,0 +1,123 @@
+# Mongo Deployment, Service and PVC
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-claim
+  labels:
+    app: mongodb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  labels:
+    app: go-todo
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        tier: mongodb
+    spec:
+      containers:
+        - image: mongo
+          name: mongodb
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          volumeMounts:
+          - name: mongodb-persistent-storage
+            mountPath: /data/db
+      volumes:
+        - name: mongodb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mongodb-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  labels:
+    app: go-todo
+spec:
+  ports:
+    - port: 27017
+  selector:
+    app: go-todo
+  clusterIP: None
+---
+
+# Go-TODO Application Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  go-todo
+  labels:
+    app: go-todo
+    version: "1.0.0"
+spec:
+  selector:
+    matchLabels:
+      app: go-todo
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: go-todo
+    spec:
+      # securityContext: # Security Context 
+      #     runAsUser: 2000
+      #     runAsGroup: 3000
+      #     fsGroup: 2000
+      containers:
+      - image:  resideo-hands-on
+        name: go-todo
+        resources: # set some initial set of resources for requests
+          requests:
+            cpu: "20m"
+            memory: "55M"
+        livenessProbe: # Add live and ready probes via simple mongo ping
+          httpGet:
+            path: /todo/status/healthz
+            port: 9000
+          initialDelaySeconds: 90
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /todo/status/healthz
+            port: 9000
+          initialDelaySeconds: 30
+          timeoutSeconds: 10      
+        ports:
+        - containerPort:  9000
+          name:  todo-port
+      restartPolicy: Always
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name:  go-todo-svc
+spec:
+  selector:
+    app:  go-todo
+  ports:
+  - name:  todo-port
+    port:  9000
+    targetPort:  9000
+---
