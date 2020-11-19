@@ -1,5 +1,4 @@
 # Mongo Deployment, Service and PVC
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -18,7 +17,7 @@ kind: Deployment
 metadata:
   name: mongodb
   labels:
-    app: go-todo
+    app: mongodb
 spec:
   selector:
     matchLabels:
@@ -38,8 +37,8 @@ spec:
             - containerPort: 27017
               name: mongodb
           volumeMounts:
-          - name: mongodb-persistent-storage
-            mountPath: /data/db
+            - name: mongodb-persistent-storage
+              mountPath: /data/db
       volumes:
         - name: mongodb-persistent-storage
           persistentVolumeClaim:
@@ -50,23 +49,22 @@ kind: Service
 metadata:
   name: mongodb
   labels:
-    app: go-todo
+    app: mongodb
 spec:
   ports:
     - port: 27017
   selector:
-    app: go-todo
-  clusterIP: None
+    app: mongodb
+    tier: mongodb
 ---
-
 # Go-TODO Application Deployment and Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  go-todo
+  name: go-todo
   labels:
     app: go-todo
-    version: "1.0.0"
+    version: '0.0.1'
 spec:
   selector:
     matchLabels:
@@ -81,43 +79,56 @@ spec:
       labels:
         app: go-todo
     spec:
-      # securityContext: # Security Context 
+      # securityContext: # Security Context
       #     runAsUser: 2000
       #     runAsGroup: 3000
       #     fsGroup: 2000
       containers:
-      - image:  resideo-hands-on
-        name: go-todo
-        resources: # set some initial set of resources for requests
-          requests:
-            cpu: "20m"
-            memory: "55M"
-        livenessProbe: # Add live and ready probes via simple mongo ping
-          httpGet:
-            path: /todo/status/healthz
-            port: 9000
-          initialDelaySeconds: 90
-          timeoutSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /todo/status/healthz
-            port: 9000
-          initialDelaySeconds: 30
-          timeoutSeconds: 10      
-        ports:
-        - containerPort:  9000
-          name:  todo-port
+        - image: resideo-exercise:0.0.1
+          imagePullPolicy: IfNotPresent
+          name: go-todo
+          resources: # set some initial set of resources for requests
+            requests:
+              cpu: '20m'
+              memory: '55M'
+          envFrom:
+            - configMapRef:
+                name: 'go-todo-env'
+          # livenessProbe: # Add live and ready probes via simple mongo ping
+          #   httpGet:
+          #     path: /todo/status/healthz
+          #     port: 9000
+          #   initialDelaySeconds: 90
+          #   timeoutSeconds: 10
+          # readinessProbe:
+          #   httpGet:
+          #     path: /todo/status/healthz
+          #     port: 9000
+          #   initialDelaySeconds: 30
+          #   timeoutSeconds: 10
+          ports:
+            - containerPort: 9000
+              name: todo-port
       restartPolicy: Always
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name:  go-todo-svc
+  name: go-todo-svc
 spec:
   selector:
-    app:  go-todo
+    app: go-todo
   ports:
-  - name:  todo-port
-    port:  9000
-    targetPort:  9000
+    - name: todo-port
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: go-todo-env
+  labels:
+    app: go-todo
+data:
+  MONGO_HOST: mongodb
 ---

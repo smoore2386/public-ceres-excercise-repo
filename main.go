@@ -23,15 +23,8 @@ var sess *mgo.Session
 var host string = "localhost"
 
 
-// Need to correctly configure the host via configmap default localhost:27017
-func setHost() {
-	if os.Getenv("MONGO_HOST") != "" {
-		host = os.Getenv("MONGO_HOST")
-	}
-}
-
 var (
-	hostName       string = "localhost:27017"
+	hostName       string = os.Getenv("MONGO_HOST") + ":27017"
 	dbName         string = "demo_todo"
 	collectionName string = "todo"
 	port           string = ":9000"

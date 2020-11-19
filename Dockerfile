@@ -7,6 +7,6 @@ RUN go build -o main
 
 FROM golang
 WORKDIR /root/
-COPY --from=build_stage /app/main .
+COPY --from=build_stage /app/ .
 EXPOSE 9000
 CMD ["./main"] 
